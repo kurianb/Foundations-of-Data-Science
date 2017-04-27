@@ -1,0 +1,66 @@
+---
+title: "Capstone Project Proposal"
+author: Bloomiya Kurian
+Date: "April 27, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The Problem
+
+Ever since President Trump signed Executive orders on Immigration and travel ban on immigrants from certain countries, people across the globe, especially in the U.S, have started debates in favor and against the move. The basis for these executive orders is national security. But some people believe that the ban is against the US culture and constitution. Others think that the move is essential in the wake of several terrorist attacks happening in the US and across the world. Many have been expressing their support and calls to protest against the President's actions and his views through social media sites.
+
+In this project I would like to analyze certain types of tweets posted on Twitter through Sentiment Analysis. The specific questions I would like to explore are:
+
+ a)	What percentage of tweets about the President's/ his administration's actions/views are positive (supporting) and negative (resisting)? 
+ 
+ b)	Which state support the president's actions more? Is there any relation between these states and the states that supported President Donald Trump during the election? 
+ 
+ c)	In what category the most famous/ re-tweeted tweets come in?
+
+
+## The Data Set and Scope
+
+Tweets that contain words or hashtags such as 'immigrationban', 'travelban', 'muslimban', 'BanIslam', 'resist', 'DeleteUber', 'IResist' and 'TheResistance' will be collected through Twitter Search API. The current scope is limited to tweets posted from states in the United States. Tweets collected from each state will be merged into one file.
+
+### Dataset Fields:
+
+1.	Text: - This column contains the text of the tweet
+2.	Favorited:-"Indicates whether the Tweet has been liked by the authenticating user"
+3.	Favorite Count:-" Indicates approximately how many times the Tweet has been liked by Twitter users"
+4.	ReplyToSN:- "If the represented Tweet is a reply, this field will contain the screen name of the original Tweet's author"
+5.	Created:- "UTC time when the Tweet was created"
+6.	Truncated:-"Indicates whether the value of the text parameter was truncated, for example, as a result of a retweet exceeding the 140 character Tweet length. Truncated text will end in ellipsis, like this ... Since Twitter now rejects long Tweets vs truncating them, the large majority of Tweets will have this set to false . Note that while native retweets may have their toplevel text property shortened, the original text will be available under the retweeted_status object and the truncated parameter will be set to the value of the original status (in most cases, false )."
+7.	ReplyToSID:- "If the represented Tweet is a reply, this field will contain the integer representation of the original Tweet's ID"
+8.	ID: "The integer representation of the unique identifier for the Tweet. This number is greater than 53 bits and some programming languages may have difficulty/silent defects in interpreting it"
+9.	ReplyToUID:- "If the represented Tweet is a reply, this field will contain the integer representation of the original Tweet's author ID"
+10.	StatusSource:- "Utility used to post the Tweet, as an HTML-formatted string. Tweets from the Twitter website have a source value of web"
+11.	ScreenName:- The user screen name
+12.	RetweetCount: - "Number of times the Tweet has been retweeted"
+13.	IsRetweet:- 
+14.	Retweeted
+15.	Longitude
+16.	Latitude
+
+Two additional columns were added based on the location from where the tweet was posted: 
+
+  1) City 
+  2) State
+
+One more column will be added to the dataset: 'Sentiment Score'
+
+    Sentiment score represents the degree of protest reflected in each post. On a scale of       0-4 each tweet will be assigned a score depending on the negativity of the tweet. 0 will     represent completely negative. 2 will represent neutral and 4 will represent positive.
+
+## The Deliverables
+
+1. R code for collecting and analyzing tweets, along with explanation
+2. Visualizations generated based on the analysis:
+
+  a.	A chart that shows number of positive and negative tweets across the time period of collected data
+  b.	A chart that plots favorite count against the sentiment categories
+  c.	A chart that plots re-tweet count against the sentiment categories
+  d.	A map that shows the variance between sentiment score margin and election results margin.
+
