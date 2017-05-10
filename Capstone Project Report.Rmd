@@ -1,0 +1,361 @@
+---
+title: "Capstone Project Proposal"
+author: Bloomiya Kurian
+Date: "April 27, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The Problem
+
+Ever since President Trump signed Executive orders on Immigration and travel ban on immigrants from certain countries, people across the globe, especially in the U.S, have started debates in favor and against the move. The basis for these executive orders is national security. But some people believe that the ban is against the US culture and constitution. Others think that the move is essential in the wake of several terrorist attacks happening in the US and across the world. Many have been expressing their support and calls to protest against the President's actions and his views through social media sites.
+
+In this project I would like to analyze certain types of tweets posted on Twitter through Sentiment Analysis. The specific questions I would like to explore are:
+
+ a)	What percentage of tweets about the President's/ his administration's actions/views are positive (supporting) and negative (resisting)? 
+ 
+ b)	Which state support the president's actions more? Is there any relation between these states and the states that supported President Donald Trump during the election? 
+ 
+ c)	In what category the most famous/ re-tweeted tweets come in?
+
+
+## The Data Set and Scope
+
+Tweets that contain words or hashtags such as 'immigrationban', 'travelban', 'muslimban', 'BanIslam', 'resist', 'DeleteUber', 'IResist' and 'TheResistance' were collected through Twitter Search API. The current scope is limited to tweets posted from states in the United States. 
+
+The Twitter Search API returned the following attributes:
+
+1.	Text: - This column contains the text of the tweet
+2.	Favorited:-"Indicates whether the Tweet has been liked by the authenticating user"
+3.	Favorite Count:-" Indicates approximately how many times the Tweet has been liked by Twitter users"
+4.	ReplyToSN:- "If the represented Tweet is a reply, this field will contain the screen name of the original Tweet's author"
+5.	Created:- "UTC time when the Tweet was created"
+6.	Truncated:-"Indicates whether the value of the text parameter was truncated, for example, as a result of a retweet exceeding the 140 character Tweet length. Truncated text will end in ellipsis, like this ... Since Twitter now rejects long Tweets vs truncating them, the large majority of Tweets will have this set to false . Note that while native retweets may have their toplevel text property shortened, the original text will be available under the retweeted_status object and the truncated parameter will be set to the value of the original status (in most cases, false )."
+7.	ReplyToSID:- "If the represented Tweet is a reply, this field will contain the integer representation of the original Tweet's ID"
+8.	ID: "The integer representation of the unique identifier for the Tweet. This number is greater than 53 bits and some programming languages may have difficulty/silent defects in interpreting it"
+9.	ReplyToUID:- "If the represented Tweet is a reply, this field will contain the integer representation of the original Tweet's author ID"
+10.	StatusSource:- "Utility used to post the Tweet, as an HTML-formatted string. Tweets from the Twitter website have a source value of web"
+11.	ScreenName:- The user screen name
+12.	RetweetCount: - "Number of times the Tweet has been retweeted"
+13.	IsRetweet:- 
+14.	Retweeted
+15.	Longitude
+16.	Latitude
+
+### Data Preparation
+
+## Step 1:Connect to Twitter REST API and download tweets 
+
+
+```{r echo = TRUE, eval = FALSE}
+
+### --- install and load required packages
+
+install.packages("twitteR")
+install.packages("ROAuth")
+library("twitteR")
+library("ROAuth")
+
+### --- create a twitter account and obtain required access credentials to connect to twitter API
+
+api_key <- ""
+
+api_secret <- ""
+
+access_token <- ""
+
+access_token_secret <- ""
+
+### --- set-up twitter authentication using the keys
+
+setup_twitter_oauth(api_key,api_secret,access_token,access_token_secret)
+
+### --- extract tweets for each US state using searchTwitter function and write to a csv file
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='61.2876,-149.4869,400mi')
+
+df_tweets_AK_Alaska <- twListToDF(tweets)
+
+
+```
+
+
+
+Longitude and Latitude values were null for most of the tweets.So location of each tweet was not available from the extracted data. But since the search query was based on a city and State, city and State attributes can be added to each data frame representing the location of the tweets.
+
+```{r echo = TRUE, eval = FALSE}
+# For Alaska the radius included in the search query covered most of the cities. So exact city of each returned tweet is not available, hence adding City Name as 'Alaska'
+
+df_tweets_AK_Alaska$City <- "Alaska"
+
+df_tweets_AK_Alaska$State <- "AK"
+
+```
+The search queries were repeated for all other States. If the structure of the State is not fitting within a radius, different cities within the state was included in the search with smaller radius. This step is to make sure the search radius do not cover outside the boundary of the State.
+
+```{r echo = TRUE, eval = FALSE}
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='33.4564,-86.8019,100mi')
+
+df_tweets_AL_Birmingham <- twListToDF(tweets)
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='32.3569,-86.2578,100mi')
+
+df_tweets_AL_Mongomery <- twListToDF(tweets)
+
+```
+
+## Step 2:Add City and State columns:
+
+```{r echo = TRUE, eval = FALSE}
+df_tweets_AL_Birmingham$City <- "Birmingham"
+
+df_tweets_AL_Birmingham$State <- "AL"
+
+df_tweets_AL_Mongomery$City <- "Mongomery"
+
+df_tweets_AL_Mongomery$State <- "AL"
+
+```
+
+## Step 3:Merge data frames for each state and remove duplicate tweets:
+
+The search for tweets from Alabama was done in two steps. First with a 100 mile radius centering the city Birmingham and the second with 100 mile radius centering the city Mongomery. Since there can be a radius overlap between these two cities, same tweet can be included in both dataframes for the State. The goal is to combine all the data frames for a State into one dataframe and remove the duplicate tweets.
+
+```{r echo = TRUE, eval = FALSE}
+# Combine data frames for Alabama
+
+df_tweets_AL <- rbind(df_tweets_AL_Birmingham, df_tweets_AL_Mongomery)
+
+# Remove duplicate tweets
+
+df_tweets_AL_Final <- df_tweets_AL %>% distinct(text, favorited,favoriteCount,replyToSN,created,truncated,replyToSID,id,replyToUID,statusSource,screenName,retweetCount,isRetweet,retweeted,longitude,latitude,.keep_all = TRUE)
+
+```
+Above steps were repeated for all the remaining States in the U.S.
+
+#Arkansas (AR)
+
+```{r echo = TRUE, eval = FALSE}
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='34.2089,-91.9859,120mi')
+
+df_tweets_AR_Conway <- twListToDF(tweets)
+
+df_tweets_AR_Conway$City <- "Conway"
+
+df_tweets_AR_Conway$State <- "AR"
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='35.8358,-90.6230,20mi')
+
+df_tweets_AR_Jonesboro <- twListToDF(tweets)
+
+df_tweets_AR_Jonesboro$City <- "Jonesboro"
+
+df_tweets_AR_Jonesboro$State <- "AR"
+
+df_tweets_AR <- rbind(df_tweets_AR_Conway, df_tweets_AR_Jonesboro)
+
+df_tweets_AR_Final <- df_tweets_AR %>% distinct(text, favorited,favoriteCount,replyToSN,created,truncated,replyToSID,id,replyToUID,statusSource,screenName,retweetCount,isRetweet,retweeted,longitude,latitude,.keep_all = TRUE)
+```
+#Arizona (AZ)
+
+```{r echo = TRUE, eval = FALSE}
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='33.7039,-112.1871,120mi')
+
+df_tweets_AZ_Phoenix <- twListToDF(tweets)
+
+df_tweets_AZ_Phoenix$City <- "Phoenix"
+
+df_tweets_AZ_Phoenix$State <- "AZ"
+
+```
+---- Fill up code for remaining states-----
+
+Tweets collected from each state were merged into one file.
+
+## Step 4:Merge all the state level files into one csv file:
+
+```{r echo = TRUE, eval = FALSE}
+df_tweets_US <- rbind(df_tweets_AK_Alaska,df_tweets_AL_Final,df_tweets_AR_Final,df_tweets_AZ_Phoenix)
+
+write.csv(df_tweets_US, file = "Tweets - Presidential actions 2017.csv")
+
+```
+
+### Data Exploration
+
+```{r echo = TRUE}
+
+library(dplyr)
+
+# Read data from CSV file
+
+tweets_data = read.csv(file="C:/Users/Bloomiya/Documents/MyLearning/Twitter Data/Tweets - Presidential actions 2017.csv",row.names=NULL,header=TRUE)
+
+# Summarize no of tweets collected per State
+
+tweets_data %>% group_by(State) %>% summarise(tweet_count = n()) %>% arrange(tweet_count)
+
+```
+
+The state Delaware had the lowest number of tweets. And New York had the highest number. Since the count of tweets per State varies drastically the population for this data set is not even. States with metro cities usually have more people using social media than remote States. This could explain the reason for the outliers.
+
+### Sentiment Analysis
+
+Once the data set is cleaned and explored the next step is to identify the sentiment of each tweet in the data set. Though the data set includes many attributes, only relevant attribute required for calculating sentiment is the 'text' column. Since the tweet text includes many irrelevant symbols and junks, each text needs to be cleaned to extract the actual tweet itself.
+
+# Data Cleaning
+
+```{r echo = TRUE}
+library('magrittr')
+library(stringr)
+
+clean_tweet = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweets_data[,1])
+clean_tweet = gsub("&amp", "", clean_tweet)
+clean_tweet = gsub("@\\w+", "", clean_tweet)
+clean_tweet = gsub("[[:punct:]]", "", clean_tweet)
+clean_tweet = gsub("[[:digit:]]", "", clean_tweet)
+clean_tweet = gsub("http\\w+", "", clean_tweet)
+clean_tweet = gsub("[ \t]{2,}", "", clean_tweet)
+clean_tweet = gsub("^\\s+|\\s+$", "", clean_tweet) 
+clean_tweet = gsub("\\\n", " ", clean_tweet) 
+clean_tweet <- str_replace_all(clean_tweet,"#[a-z,A-Z]*","")
+
+tweets_data$Clean_Tweet_With_Hashtag <- clean_tweet
+
+# Cleaning round 2 - by removing allwords with hashtags
+
+clean_tweet = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweets_data[,1])
+clean_tweet <- str_replace_all(clean_tweet,"#[a-z,A-Z]*","")
+clean_tweet = gsub("&amp", "", clean_tweet)
+clean_tweet = gsub("@\\w+", "", clean_tweet)
+clean_tweet = gsub("[[:punct:]]", "", clean_tweet)
+clean_tweet = gsub("[[:digit:]]", "", clean_tweet)
+clean_tweet = gsub("http\\w+", "", clean_tweet)
+clean_tweet = gsub("[ \t]{2,}", "", clean_tweet)
+clean_tweet = gsub("^\\s+|\\s+$", "", clean_tweet) 
+clean_tweet = gsub("\\\n", " ", clean_tweet) 
+
+tweets_data$Clean_Tweet_Without_Hashtag <- clean_tweet
+
+```
+
+
+### Calculate Sentiment Score
+
+```{r echo = TRUE}
+
+library(sentimentr)
+library(exploratory)
+
+tweets_data$Sentimentscore_withhashtag <- get_sentiment(tweets_data$Clean_Tweet_With_Hashtag)
+tweets_data$Sentimentscore_withouthashtag <- get_sentiment(tweets_data$Clean_Tweet_Without_Hashtag)
+write.csv(tweets_data, file = "Tweets - Presidential actions 2017 - Sentiment Score.csv")
+
+```
+
+## Data Exploration
+
+```{r echo = TRUE}
+
+library(ggplot2)
+
+tweets_data <- tweets_data %>% rename(score_1=`Sentimentscore_withhashtag`, score_2=`Sentimentscore_withouthashtag`)
+
+tweets_data %>% select(score_1, score_2) %>% cor()
+
+tweets_data %>% group_by(State) %>% summarise(score_1 = mean(score_1)) %>% ggplot(aes(State, score_1)) + geom_bar(stat='identity')
+
+tweets_data %>% group_by(State) %>% summarise(score_1 = mean(score_2)) %>% ggplot(aes(State, score_1)) + geom_bar(stat='identity')
+
+```
+
+### Sentiment Score on US State Map
+
+
+
+
+### Regression Analysis
+
+```{r echo = TRUE}
+
+tweets_data <- tweets_data %>% rename(score_1=`Sentimentscore_withhashtag`, score_2=`Sentimentscore_withouthashtag`)
+
+###---To be corrected
+State = tweets_data$State %>% group_by(State)
+
+SentimentScore = tweets_data %>% group_by(State) %>% mean(score_2)
+
+SentimentScore_data = data.frame(State, SentimentScore)
+####
+
+### To be removed once the above code is corrected
+
+SentimentScore_data = read.csv(file="SentimentScore_data.csv",row.names=NULL,header=TRUE)
+
+###
+
+ElectionResults_data =  read.csv(file="2016 National Popular Vote Tracker.csv",row.names=NULL,header=TRUE)
+
+RegressionAnalysis_data <- merge(SentimentScore_data, ElectionResults_data, by="State")
+
+#### To be added -change format of Score and VictoryMargin and remove the below code to read csv
+
+RegressionAnalysis_data =  read.csv(file="RegressionAnalysis_data.csv",row.names=NULL,header=TRUE) ### for testing column format
+
+lm(RegressionAnalysis_data$Score ~ RegressionAnalysis_data$VictoryMargin)
+
+#lm(RegressionAnalysis_data$Score ~ RegressionAnalysis_data$PercentageMarginofElectionVictory)
+
+#SentimentScore =  RegressionAnalysis_data$Score
+#VictoryMargin = RegressionAnalysis_data$VictoryMargin
+#AnalysisData = data.frame(SentimentScore,VictoryMargin)
+
+#sentimentfit <- lm(AnalysisData$SentimentScore ~ AnalysisData$VictoryMargin) 
+#summary(sentimentfit)
+
+### Using Plot function
+#plot(AnalysisData$SentimentScore,AnalysisData$VictoryMargin)
+#abline(sentimentfit)
+
+### Using ggplot
+
+#ggplot(AnalysisData, aes(x = SentimentScore, y = VictoryMargin)) + geom_point() + stat_smooth(method = "lm", col = "red")
+
+### Another way using ggplot
+
+ggplotRegression <- function (fit) {
+
+require(ggplot2)
+
+ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "red") +
+  labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
+                     "Intercept =",signif(fit$coef[[1]],5 ),
+                     " Slope =",signif(fit$coef[[2]], 5),
+                     " P =",signif(summary(fit)$coef[2,4], 5)))
+}
+
+ggplotRegression(lm(VictoryMargin ~ Score, data = RegressionAnalysis_data))
+
+
+
+```
+
+
+
+
+
+## The Deliverables
+
+1. R code for collecting and analyzing tweets, along with explanation
+2. Visualizations generated based on the analysis:
+
+  a.	A chart that shows number of positive and negative tweets across the time period of collected data
+  b.	A chart that plots favorite count against the sentiment categories
+  c.	A chart that plots re-tweet count against the sentiment categories
+  d.	A map that shows the variance between sentiment score margin and election results margin.
+
