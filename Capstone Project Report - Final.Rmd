@@ -1,0 +1,633 @@
+---
+title: "Capstone Project Report"
+subtitle: "Sentiment Analysis using Twitter Data"
+author: "Bloomiya Kurian"
+output:
+  html_document: default
+  pdf_document: default
+Date: "May 23, 2017"
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## **INTRODUCTION**
+
+Ever since President Trump signed Executive orders on Immigration and travel ban on immigrants from certain countries, people across the globe, especially in the U.S, have started debates in favor and against the move. The basis for these executive orders is national security. But some people believe that the ban is against the US culture and constitution. Others think that the move is essential in the wake of several terrorist attacks happening in the US and across the world. In addition to the bans, people have been voicing their opinions about other actions and views of the President. Many have been expressing their support and calls to protest against these actions and views through social media sites. It will be interesting to find out if the people who supported Mr.Trump during the election still support him after he became the President.
+
+## **THE PROBLEM**
+
+In this project I would like to analyze certain types of tweets posted on Twitter through Sentiment Analysis. The specific questions I would like to explore are:
+
+ a)	What percentage of tweets collected about the President's/ his administration's actions/views are positive (supporting) and negative (resisting)? 
+ 
+ b)	Which state supports the president's actions more? Is there any relation between these states and the states that supported President Trump during the election? 
+
+## **DATA SET AND SCOPE**
+
+Tweets that contain words or hash tags such as 'immigrationban', 'travelban', 'muslimban', 'BanIslam', 'resist', 'DeleteUber', 'IResist' and 'TheResistance' were collected through Twitter Search API. The current scope is limited to tweets posted from states in the United States. 
+
+The Twitter Search API returned the following attributes:
+
+1.	Text: - This column contains the text of the tweet
+2.	Favorited:-"Indicates whether the Tweet has been liked by the authenticating user"
+3.	Favorite Count:-" Indicates approximately how many times the Tweet has been liked by Twitter users"
+4.	ReplyToSN:- "If the represented Tweet is a reply, this field will contain the screen name of the original Tweet's author"
+5.	Created:- "UTC time when the Tweet was created"
+6.	Truncated:-"Indicates whether the value of the text parameter was truncated, for example, as a result of a re tweet exceeding the 140 character Tweet length. Truncated text will end in ellipsis, like this ... Since Twitter now rejects long Tweets vs truncating them, the large majority of Tweets will have this set to false . Note that while native re tweets may have their top level text property shortened, the original text will be available under the re tweeted_status object and the truncated parameter will be set to the value of the original status (in most cases, false )."
+7.	ReplyToSID:- "If the represented Tweet is a reply, this field will contain the integer representation of the original Tweet's ID"
+8.	ID: "The integer representation of the unique identifier for the Tweet. This number is greater than 53 bits and some programming languages may have difficulty/silent defects in interpreting it"
+9.	ReplyToUID:- "If the represented Tweet is a reply, this field will contain the integer representation of the original Tweet's author ID"
+10.	StatusSource:- "Utility used to post the Tweet, as an HTML-formatted string. Tweets from the Twitter website have a source value of web"
+11.	ScreenName:- The user screen name
+12.	RetweetCount: - "Number of times the Tweet has been retweeted"
+13.	IsRetweet:- 
+14.	Retweeted
+15.	Longitude
+16.	Latitude
+
+## **DATA EXTRACTION AND PREPARATION**
+
+### Step 1:Connect to Twitter REST API and download tweets 
+
+
+```{r echo = TRUE, eval = FALSE}
+
+### --- Install and load required packages
+
+install.packages("twitteR")
+install.packages("ROAuth")
+library("twitteR")
+library("ROAuth")
+
+### --- create a twitter account and obtain required access credentials to connect to twitter API
+
+api_key <- ""
+
+api_secret <- ""
+
+access_token <- ""
+
+access_token_secret <- ""
+
+### --- set-up twitter authentication using the keys
+
+setup_twitter_oauth(api_key,api_secret,access_token,access_token_secret)
+
+### --- extract tweets for each US state using searchTwitter function and write to a csv file. Few examples are shown here. A table with necessary details is provided below for all states. By replacing geocode and radius parameters for each city we can obtain tweets for all the locations included in the scope of this analysis.
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='61.2876,-149.4869,400mi')
+
+df_tweets_AK_Alaska <- twListToDF(tweets)
+
+
+```
+
+
+Longitude and Latitude values were null for most of the tweets.So location of each tweet was not available from the extracted data. But since the search query was based on a City and State, these attributes can be added to each data frame representing the location of the tweets.
+
+```{r echo = TRUE, eval = FALSE}
+
+# For Alaska the radius included in the search query covered most of the cities. So exact city of each returned tweet is not available, hence adding City Name as 'Alaska'
+
+df_tweets_AK_Alaska$City <- "Alaska"
+
+df_tweets_AK_Alaska$State <- "AK"
+
+```
+
+The search queries were repeated for all the other States. If the geographic structure of the State was not fitting within a radius, different cities within the state were included in the search with smaller radius. This step was to make sure the search radius does not cover outside the boundary of the State.
+
+```{r echo = TRUE, eval = FALSE}
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='33.4564,-86.8019,100mi')
+
+df_tweets_AL_Birmingham <- twListToDF(tweets)
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='32.3569,-86.2578,100mi')
+
+df_tweets_AL_Mongomery <- twListToDF(tweets)
+
+```
+
+### Step 2:Add City and State columns:
+
+```{r echo = TRUE, eval = FALSE}
+
+df_tweets_AL_Birmingham$City <- "Birmingham"
+
+df_tweets_AL_Birmingham$State <- "AL"
+
+df_tweets_AL_Mongomery$City <- "Mongomery"
+
+df_tweets_AL_Mongomery$State <- "AL"
+
+```
+
+### Step 3:Merge data frames for each state and remove duplicate tweets:
+
+The search for tweets from Alabama was done in two steps. First with a 100 mile radius centering the city Birmingham and the second with 100 mile radius centering the city Montgomery. Since there can be a radius overlap between these two cities, same tweet can be included in both data frames for the State. The goal was to combine all the data frames for a State into one data frame and remove the duplicate tweets.
+
+```{r echo = TRUE, eval = FALSE}
+
+# Combine data frames for Alabama
+
+df_tweets_AL <- dplyr::bind_rows(df_tweets_AL_Birmingham, df_tweets_AL_Mongomery)
+
+# Remove duplicate tweets
+
+df_tweets_AL_Final <- df_tweets_AL %>% distinct(text, favorited,favoriteCount,replyToSN,created,truncated,replyToSID,id,replyToUID,statusSource,screenName,retweetCount,isRetweet,retweeted,longitude,latitude,.keep_all = TRUE)
+
+```
+Above steps were repeated for all the remaining States in the U.S.
+
+#### E.g.1 Arkansas (AR)
+
+```{r echo = TRUE, eval = FALSE}
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='34.2089,-91.9859,120mi')
+
+df_tweets_AR_Conway <- twListToDF(tweets)
+
+df_tweets_AR_Conway$City <- "Conway"
+
+df_tweets_AR_Conway$State <- "AR"
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='35.8358,-90.6230,20mi')
+
+df_tweets_AR_Jonesboro <- twListToDF(tweets)
+
+df_tweets_AR_Jonesboro$City <- "Jonesboro"
+
+df_tweets_AR_Jonesboro$State <- "AR"
+
+df_tweets_AR <- rbind(df_tweets_AR_Conway, df_tweets_AR_Jonesboro)
+
+df_tweets_AR_Final <- df_tweets_AR %>% distinct(text, favorited,favoriteCount,replyToSN,created,truncated,replyToSID,id,replyToUID,statusSource,screenName,retweetCount,isRetweet,retweeted,longitude,latitude,.keep_all = TRUE)
+```
+
+#### E.g.2 Arizona (AZ)
+
+```{r echo = TRUE, eval = FALSE}
+
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='33.7039,-112.1871,120mi')
+
+df_tweets_AZ_Phoenix <- twListToDF(tweets)
+
+df_tweets_AZ_Phoenix$City <- "Phoenix"
+
+df_tweets_AZ_Phoenix$State <- "AZ"
+
+```
+
+Geocodes and radius used for other States and Cities are provided in the appendix section.
+
+
+After collecting tweets from all states, all tweets were merged into one file.
+
+### Step 4: Merge all the state level files into one csv file:
+
+```{r echo = TRUE, eval = FALSE}
+
+# --- In the below code only dataframes for the examples included are included. Ideally dataframe for all the states need to be included to get the final dataset
+
+df_tweets_US <- dplyr::bind_rows(df_tweets_AK_Alaska,df_tweets_AL_Final,df_tweets_AR_Final,df_tweets_AZ_Phoenix)
+
+# --- Write to csv file
+
+write.csv(df_tweets_US, file = "Tweets - Presidential actions 2017.csv")
+
+```
+
+## **INITIAL DATA EXPLORATION**
+
+```{r echo = TRUE}
+
+# Load library
+
+library(dplyr)
+
+# Read data from CSV file. Link to the dataset: https://drive.google.com/open?id=0BxWW5x7AJ4r8OHhueVpKUGkyTWc
+
+#tweets_data = readr::read_csv(file="Tweets - Presidential actions 2017.csv")
+
+tweets_data = read.csv(file="Tweets - Presidential actions 2017.csv",row.names=NULL,header=TRUE)
+
+# See structure of the data
+
+str(tweets_data)
+
+# Summarize number of tweets collected per State
+
+tweets_data %>% group_by(State) %>% summarise(tweet_count = n()) %>% ungroup() %>% arrange(State) %>% knitr::kable()
+
+```
+
+The state Delaware had the lowest number of tweets. And New York had the highest number. Since the count of tweets per State varied drastically the population for this data set is not even. States with metro cities usually have more people using social media than remote States. This could explain the reason for the outliers.
+
+## **SENTIMENT ANALYSIS**
+
+Once the data set is cleaned and explored the next step is to identify the sentiment of each tweet in the data set. Though the data set includes many attributes, only relevant attribute required for calculating sentiment is the 'text' column. Since the tweet text includes many irrelevant symbols and junks, each text needs to be cleaned to extract the actual tweet itself.
+
+### Data Cleaning
+
+Tweets were cleaned in two different ways: 1) By leaving hashtags in the text 2) By removing hashtags in the text.
+
+```{r echo = TRUE}
+
+library('magrittr')
+library(stringr)
+
+clean_tweet = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweets_data[,1])
+clean_tweet = gsub("&amp", "", clean_tweet)
+clean_tweet = gsub("@\\w+", "", clean_tweet)
+clean_tweet = gsub("[[:punct:]]", "", clean_tweet)
+clean_tweet = gsub("[[:digit:]]", "", clean_tweet)
+clean_tweet = gsub("http\\w+", "", clean_tweet)
+clean_tweet = gsub("[ \t]{2,}", "", clean_tweet)
+clean_tweet = gsub("^\\s+|\\s+$", "", clean_tweet) 
+clean_tweet = gsub("\\\n", " ", clean_tweet) 
+clean_tweet <- str_replace_all(clean_tweet,"#[a-z,A-Z]*","")
+
+tweets_data$Clean_Tweet_With_Hashtag <- clean_tweet
+
+# Cleaning round 2 - by removing all words with hashtags
+
+clean_tweet = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweets_data[,1])
+clean_tweet <- str_replace_all(clean_tweet,"#[a-z,A-Z]*","")
+clean_tweet = gsub("&amp", "", clean_tweet)
+clean_tweet = gsub("@\\w+", "", clean_tweet)
+clean_tweet = gsub("[[:punct:]]", "", clean_tweet)
+clean_tweet = gsub("[[:digit:]]", "", clean_tweet)
+clean_tweet = gsub("http\\w+", "", clean_tweet)
+clean_tweet = gsub("[ \t]{2,}", "", clean_tweet)
+clean_tweet = gsub("^\\s+|\\s+$", "", clean_tweet) 
+clean_tweet = gsub("\\\n", " ", clean_tweet) 
+
+tweets_data$Clean_Tweet_Without_Hashtag <- clean_tweet
+
+```
+
+
+### Calculate Sentiment Score
+
+Few sentiment classification packages (sentimentr, doc2vec, syuzhet) were considered for scoring sentiment of each tweet. The selected package was 'sentimentr'. It calculates sentiment on the sentence level rather than counting number of negative and positive words in the sentence. For understanding the opinion of a user it is important to consider the entire sentence and its context when calculating the sentiment score. Sentiment score was calculated for texts with and without hashtags.
+
+```{r echo = TRUE}
+
+library(sentimentr)
+library(exploratory)
+
+tweets_data$Sentimentscore_withhashtag <- get_sentiment(tweets_data$Clean_Tweet_With_Hashtag)
+
+tweets_data$Sentimentscore_withouthashtag <- get_sentiment(tweets_data$Clean_Tweet_Without_Hashtag)
+
+```
+
+### Data Exploration
+
+```{r echo = TRUE}
+
+library(ggplot2)
+
+tweets_data <- tweets_data %>% rename(score_1=`Sentimentscore_withhashtag`, score_2=`Sentimentscore_withouthashtag`)
+
+# correlation analysis on two scores
+
+tweets_data %>% select(score_1, score_2) %>% cor()
+
+# State level score distribution analysis
+
+tweets_data %>% group_by(State) %>% summarise(score_1 = mean(score_1)) %>% ggplot(aes(State, score_1)) + geom_bar(stat='identity')
+
+tweets_data %>% group_by(State) %>% summarise(score_2 = mean(score_2)) %>% ggplot(aes(State, score_2)) + geom_bar(stat='identity')
+
+tweets_data %>% group_by(State) %>% summarise(score_2 = mean(score_2)) %>% ungroup() %>% arrange(score_2) %>% knitr::kable()
+
+```
+
+A correlation analysis between the two sentiment scores showed that the scores have a strong positive correlation. But mean sentiment score on state level showed that texts without hashtag gave more evenly distributed score. Texts with hashtag gave negative scores for all states except two.Hence scores generated by texts without hashtag were selected to perform further analysis.
+
+```{r echo = TRUE}
+
+# Rename score_2 as final score
+
+tweets_data <- tweets_data %>% rename(Score=`score_2`)
+
+tbl_df(tweets_data)
+
+```
+
+## **US MAP WITH SENTIMENT SCORE**
+
+The score for each state needs to be ploted on US Map so that the states can be compared against the election results map.
+
+```{r echo = TRUE}
+
+library(ggplot2)
+library(maps)
+
+
+# load map data for US States
+
+all_states <- map_data("state")
+
+# calaculate state level sentiment score
+
+sentiment_score <- tweets_data %>% group_by(State) %>% summarize(Score = mean(Score))
+
+tbl_df(sentiment_score)
+
+# get state names for each state code
+
+sentiment_score$State <- state.name[match(sentiment_score$State, state.abb)]
+
+# State name was not retrieved for DC. So it needs to be added seperately
+
+sentiment_score$State[8] <- "District of Columbia"
+
+# view the dataframe
+
+tbl_df(sentiment_score) 
+
+# map_data() does not return data for Alaska. Hence it needs to be removed from sentiment_score dataframe before it is merged with map_data() results
+
+sentiment_score <- sentiment_score[sentiment_score$State!="Alaska",]
+
+# Since Idaho was missed in the data extraction process it needs to be added to the dataset with a neutral score
+
+sentiment_score <- rbind(sentiment_score, c("Idaho", NA))
+
+sentiment_score <- sentiment_score %>% mutate(Score = as.numeric(Score))
+
+sentiment_score <- sentiment_score[ order(sentiment_score$State), ]
+
+sentiment_score_map <- sentiment_score
+
+sentiment_score_map$State <- sapply(sentiment_score_map$State, tolower)
+
+sentiment_score_map$region <- sentiment_score_map$State
+
+sentiment_score_map <- merge(all_states, sentiment_score_map, by="region")
+
+# plot the data
+
+p <- ggplot()
+
+p <- p + geom_polygon(data=sentiment_score_map, aes(x=long, y=lat, group = group, fill=sentiment_score_map$Score),colour="white") + scale_fill_continuous(low = "thistle2", high = "darkred", guide="colorbar", trans = 'reverse', na.value="white")
+
+P1 <- p + theme_bw() + labs(fill = "Resistance to 2017 Presidential Actions", title = "2017 Presidential Actions Sentiment Score Analysis", x="", y="")
+
+P1 + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c()) + theme(panel.border = element_blank())
+
+```
+
+
+## **STATISTICAL ANALYSIS**
+
+### Regression
+
+Regression analysis on sentiment score for each state and popular vote election results for each state will help explain if there is a relation between a state's people's voting trend and their sentiment towards the president's actions post election. Trump's Victory Margin for each state was taken for the analysis.
+
+
+```{r echo = TRUE}
+
+# read popular vote election dataset
+
+ElectionResults_data = readr::read_csv(file="2016 National Popular Vote Tracker.csv")
+
+ElectionResults_data[,9] <- as.numeric(sub("%","",ElectionResults_data[[9]], fixed = TRUE))
+
+RegressionAnalysis_data <- merge(sentiment_score, ElectionResults_data, by="State")
+
+# Remove the outliers
+
+#Montana Score = -0.285
+
+#DC VicotryMargin = -0.868
+
+RegressionAnalysis_data_final <- RegressionAnalysis_data[RegressionAnalysis_data$State!="Montana" & RegressionAnalysis_data$State!="District of Columbia",]
+
+# perform regression analysis
+
+summary(lm(formula = VictoryMargin ~ Score, data=RegressionAnalysis_data_final))
+
+# plot regression analysis results
+
+#ggplotRegression <- function (fit) {
+
+#require(ggplot2)
+
+#ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+#  geom_point() +
+ # stat_smooth(method = "lm", col = "red") +
+  #labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
+   #                  "Intercept =",signif(fit$coef[[1]],5 ),
+    #                 " Slope =",signif(fit$coef[[2]], 5),
+     #                " P =",signif(summary(fit)$coef[2,4], 5)))
+#}
+
+#ggplotRegression(lm(Score ~ VictoryMargin, data = RegressionAnalysis_data))
+
+
+ggplot(RegressionAnalysis_data, aes(x = VictoryMargin, y = Score )) + 
+  geom_point() + geom_point(data = RegressionAnalysis_data %>% filter(State == 'Montana'), colour="blue") + geom_point(data = RegressionAnalysis_data %>% filter(State == 'District of Columbia'), colour="blue") +
+  stat_smooth(method = "lm", col = "red")
+
+```
+
+### Spearman's Rank Correlation
+
+```{r echo = TRUE}
+
+cor.test(RegressionAnalysis_data$VictoryMargin, RegressionAnalysis_data$Score, method="spearman", exact=FALSE)
+
+```
+
+## **DISCUSSION**
+
+There are few limitations to the data set used in this analysis. 
+
+1. Search terms were biased towards resistance against actions and views of President Trump and his government.
+
+2. Twitter Rest API does not return geo locations of all the tweets.Also it returns only tweets from past 6-8 days. The geo attributes are populated only if the user of the tweet opted to disclose the location of the user. 99.9% of extracted tweets didn't have data populated for longitude and latitude attributes. Due to this limitation a manual search process based on radius around a geocode was followed to extract tweets from different states. This manual search could have resulted in an uneven data population from different states. Hence the overall sentiment calculated for the States would not represent the true opinion of the people in the States. The manual search effort also impacted timeline of tweet extraction. Tweets from all the states were not extracted at the same time frame. Hence the results of analysis done here can not represent the true intent of the actual population.
+
+3. The state Idaho was missed out in the extraction process. So the analysis doesnot show results for Idaho.
+
+
+## **CONCLUSION**
+
+Based on the polarity of the sentiment score for each tweet, it can be interpreted that 46% of the population resisted President Trump and his views/actions and 34% supported him. 20% of the population had neutral sentiment towards Mr.President. Montana state shows the highest resistance and Louisiana shows the highest support to President's actions/views. Statistical analysis of sentiment scores against voting trend shows a weak relationship between the two. Many states that supported Trump during the election supported him after the election too but the trend is not applicable across all the states.
+
+
+## **APPENDIX**
+
+### Geocodes and radius used for all States and Cities
+
+| State | City            | Latitude | Longitude | Radius in Miles |
+|-------|-----------------|----------|-----------|:---------------:|
+| AK    | Alaska          | 61.2876  | -149.4869 |       400       |
+| AL    | Birmingham      | 33.4564  | -86.8019  |       100       |
+| AL    | Montgomery       | 32.3569  | -86.2578  |       100       |
+| AR    | Conway          | 34.2089  | -91.9859  |       120       |
+| AR    | Jonesboro       | 35.8358  | -90.623   |        20       |
+| AZ    | Phoenix         | 33.7039  | -112.1871 |       120       |
+| CA    | Sacramento      | 38.3774  | -121.4444 |       100       |
+| CA    | Redding         | 40.6244  | -122.3076 |       100       |
+| CA    | Los Angeles     | 33.7865  | -118.2986 |       130       |
+| CO    | Denver          | 39.6606  | -104.7627 |        70       |
+| CO    | Grand Junction  | 39.0891  | -108.5665 |        20       |
+| CT    | Hartford        | 41.7663  | -72.6746  |        19       |
+| CT    | New Haven       | 41.3657  | -72.9275  |        15       |
+| DC    | DC              | 38.9526  | -77.0178  |        5        |
+| DE    | Newark          | 39.6147  | -75.7012  |        2        |
+| DE    | Wilmington      | 39.7585  | -75.5687  |        2        |
+| DE    | Port Penn       | 39.5129  | -75.585   |        2        |
+| DE    | Dover           | 39.1086  | -75.448   |        5        |
+| DE    | Georgetown      | 38.6328  | -75.3342  |        5        |
+| FL    | Tampa           | 27.9466  | -82.4272  |       120       |
+| FL    | Miami           | 25.5584  | -80.4581  |       140       |
+| FL    | Panama          | 30.2051  | -85.6688  |        75       |
+| FL    | Jacksonville    | 30.3375  | -81.7686  |        25       |
+| FL    | Gainesville     | 29.6778  | -82.4663  |        90       |
+| GA    | Atlanta         | 33.7978  | -84.3877  |        55       |
+| GA    | Athens          | 33.9519  | -83.3576  |        35       |
+| GA    | Macon           | 32.8279  | -83.595   |        90       |
+| GA    | Columbus        | 32.4934  | -84.9532  |        5        |
+| GA    | Augusta         | 33.4166  | -82.0559  |        5        |
+| GA    | Albany          | 31.5592  | -84.1765  |        50       |
+| GA    | Brunswick       | 31.2219  | -81.4825  |        30       |
+| GA    | Savannah        | 31.9713  | -81.0715  |        20       |
+| IA    | Des Moines      | 41.6433  | -93.6213  |        78       |
+| IA    | Iowa City       | 41.6426  | -91.5999  |        50       |
+| IA    | Mason City      | 43.1164  | -93.2705  |        25       |
+| IA    | Le Mars         | 42.7491  | -96.2617  |        17       |
+| IA    | Sioux City      | 42.471   | -96.3384  |        5        |
+| IL    | Chicago         | 41.8119  | -87.6873  |        20       |
+| IL    | Evanston        | 42.0445  | -87.6879  |        40       |
+| IL    | Bloomington     | 40.5192  | -88.8643  |        80       |
+| IL    | Rockford        | 42.284   | -89.0162  |        15       |
+| IL    | Marion          | 37.7295  | -88.9128  |        30       |
+| IN    | Indianapolis    | 39.7794  | -86.1328  |        80       |
+| IN    | Fort Wayne      | 41.0938  | -85.1841  |        20       |
+| IN    | Westville       | 41.5499  | -86.7429  |        30       |
+| KS    | Overland Park   | 39.0089  | -94.7863  |        5        |
+| KS    | Manhattan       | 39.1774  | -96.5551  |       100       |
+| KS    | Wichita         | 37.6915  | -97.3167  |        50       |
+| KS    | Hays            | 38.8765  | -99.3185  |        80       |
+| KY    | Lexington       | 38.0463  | -84.4973  |        75       |
+| KY    | Florence        | 39.0003  | -84.6251  |        10       |
+| KY    | Louisville      | 38.0227  | -85.3368  |        30       |
+| KY    | CampbellsVille  | 37.3341  | -85.3602  |        60       |
+| KY    | Cave City       | 37.1344  | -85.9727  |        40       |
+| LA    | Louisana        | 30.2248  | -91.4902  |       130       |
+| LA    | Alexandria      | 31.2944  | -92.5781  |        55       |
+| LA    | Ruston          | 32.3073  | -92.5204  |       100       |
+| MA    | Boston          | 42.3637  | -71.3626  |        29       |
+| MA    | NorthHampton    | 42.434   | -72.7405  |        30       |
+| MA    | Rockport        | 42.6121  | -70.6933  |        30       |
+| MA    | Plymouth        | 41.9443  | -70.666   |        30       |
+| MA    | Worcester       | 42.383   | -71.8098  |        30       |
+| MD    | Baltimore       | 39.2858  | -76.6248  |        34       |
+| MD    | Frederick       | 39.5233  | -77.4105  |        25       |
+| MD    | Ocean City      | 38.2698  | -75.404   |        30       |
+| ME    | Bangor          | 44.6808  | -69.1843  |       100       |
+| ME    | Portland        | 43.651   | -70.2243  |        40       |
+| MI    | Detroit         | 42.731   | -84.5388  |        90       |
+| MI    | Grand Rapids    | 42.9528  | -85.2931  |        80       |
+| MI    | Petoskey        | 45.3672  | -84.9458  |       150       |
+| MI    | Marquette       | 46.5485  | -87.4213  |       150       |
+| MN    | Minneapolis     | 45.1431  | -94.6977  |       100       |
+| MN    | Rochester       | 44.0055  | -92.4716  |        42       |
+| MN    | Marshall        | 44.4692  | -94.9417  |       100       |
+| MN    | Brainerd        | 46.3382  | -94.1872  |       100       |
+| MO    | Columbia        | 38.9466  | -92.3434  |       125       |
+| MO    | Lebanon         | 37.6609  | -92.6495  |        90       |
+| MO    | Brookfield      | 39.7821  | -93.0744  |        95       |
+| MS    | Jackson         | 32.3129  | -89.6661  |        45       |
+| MS    | Hattiesburg     | 31.4046  | -89.1717  |        40       |
+| MS    | Wiggins         | 30.8466  | -89.1406  |        40       |
+| MS    | Winona          | 33.4751  | -89.7303  |        90       |
+| MS    | Oxford          | 34.1673  | -89.5316  |        70       |
+| MT    | Lewistown       | 47.0249  | -109.3877 |       250       |
+| NC    | Mount Olive     | 47.0249  | -109.3877 |       120       |
+| NC    | Asheboro        | 35.7078  | -79.8074  |        90       |
+| NC    | Asheville       | 35.5887  | -82.554   |        35       |
+| ND    | McClusky        | 47.458   | -99.9342  |       200       |
+| NE    | Ord             | 41.6041  | -98.9217  |       150       |
+| NE    | Lincoln         | 40.7275  | -96.8416  |        60       |
+| NE    | Alliance        | 42.0816  | -102.8585 |        80       |
+| NH    | Concord         | 43.3016  | -71.5764  |        50       |
+| NH    | Laconia         | 43.5277  | -71.5142  |        40       |
+| NJ    | Newark          | 40.7338  | -74.1656  |        8        |
+| NJ    | Vineland        | 39.4787  | -75.0216  |        35       |
+| NJ    | Toms River      | 39.9519  | -74.2049  |        40       |
+| NJ    | Marlboro        | 40.3368  | -74.2736  |        25       |
+| NJ    | Branchburg      | 40.5848  | -74.681   |        25       |
+| NJ    | Patterson       | 40.9129  | -74.1802  |        18       |
+| NJ    | Jefferson       | 41.0028  | -74.5611  |        30       |
+| NM    | Claunch         | 34.1464  | -105.9985 |       250       |
+| NV    | Las Vegas       | 35.9279  | -114.972  |        40       |
+| NV    | Carson City     | 39.2025  | -119.7526 |        20       |
+| NV    | Ely             | 39.3141  | -114.8404 |        40       |
+| NV    | Battle Mountain | 40.0421  | -116.9748 |       100       |
+| NY    | Queens          | 40.7388  | -73.79    |        10       |
+| NY    | Shirley         | 40.9223  | -72.637   |        30       |
+| NY    | New Rochelle    | 40.9482  | -73.7953  |        30       |
+| NY    | JFK             | 40.6645  | -73.7559  |        15       |
+| NY    | Syracuse        | 43.0764  | -76.1099  |        73       |
+| NY    | Rochester       | 43.1663  | -77.6029  |        73       |
+| NY    | Watertown       | 44.0725  | -76.0165  |        38       |
+| NY    | Albany          | 42.7197  | -73.8206  |        15       |
+| NY    | Kansas City     | 39.1163  | -94.688   |        5        |
+| OH    | Columbus        | 40.3721  | -82.7587  |       120       |
+| OK    | Norman          | 35.7443  | -97.334   |       140       |
+| OR    | Portland        | 45.5194  | -122.6901 |        40       |
+| OR    | Salem           | 44.9935  | -123.1074 |        40       |
+| OR    | Eugene          | 44.0323  | -123.0957 |        40       |
+| OR    | Roseburg        | 43.0535  | -123.3608 |        40       |
+| OR    | Medford         | 43.3331  | -123.3256 |        25       |
+| OR    | Bend            | 43.843   | -121.5764 |        25       |
+| PA    | Philadelphia    | 40.1938  | -75.4893  |        25       |
+| PA    | Pittsburg       | 40.8701  | -78.7558  |       110       |
+| PA    | Harrisburg      | 41.0592  | -77.0805  |       100       |
+| RI    | Providence      | 41.8643  | -71.5649  |        11       |
+| RI    | Newport         | 41.5937  | -71.4203  |        17       |
+| SC    | Columbia        | 33.7124  | -80.5535  |        80       |
+| SC    | Clinton         | 34.5415  | -81.8133  |        60       |
+| TN    | Memphis         | 35.5822  | -89.1055  |        70       |
+| TN    | Nashville       | 35.8409  | -87.6709  |        70       |
+| TN    | Westel          | 35.8362  | -84.6983  |        70       |
+| TN    | Greenville      | 36.2107  | -83.0822  |        30       |
+| TX    | Austin          | 30.3263  | -97.7712  |       200       |
+| TX    | Dallas          | 32.8338  | -96.7715  |        72       |
+| TX    | Houston         | 29.8339  | -95.4342  |       100       |
+| TX    | Corpus Christi  | 27.732   | -97.3851  |       100       |
+| UT    | Salt Lake City  | 40.7838  | -111.8771 |        50       |
+| UT    | Brigham City    | 41.5046  | -112.0602 |        40       |
+| UT    | Provo           | 39.8775  | -111.716  |       100       |
+| VA    | Richmond        | 37.5303  | -77.4448  |        60       |
+| VA    | Norfolk         | 37.0745  | -76.3132  |        40       |
+| VA    | Lynchburg       | 37.2896  | -79.1074  |        50       |
+| VA    | Alexandria      | 38.8165  | -77.3514  |        20       |
+| VA    | Culpeper        | 38.4646  | -77.9904  |        40       |
+| VT    | Burlington      | 44.5856  | -72.522   |        50       |
+| VT    | Granville       | 43.9945  | -72.7839  |        40       |
+| VT    | Killington      | 43.6788  | -72.7939  |        25       |
+| WA    | Seattle         | 47.4322  | -121.8033 |       100       |
+| WA    | Yakima          | 46.6287  | -120.5739 |        90       |
+| WA    | Walla Walla     | 46.1341  | -118.2914 |        90       |
+| WA    | Spokane         | 47.7805  | -117.4553 |        20       |
+| WA    | Kennewick       | 46.2123  | -119.1556 |        40       |
+| WA    | Colville        | 48.6769  | 117.8093  |        40       |
+| WI    | Milwakee        | 43.505   | -88.2182  |        90       |
+| WI    | Holcombe        | 45.1545  | -91.1735  |        70       |
+| WI    | Spirit Falls    | 45.3427  | -89.6657  |        65       |
+| WI    | Iron River      | 46.4311  | -91.2513  |        50       |
+| WV    | Charleston      | 38.1774  | -81.3888  |        70       |
+| WV    | Philip          | 39.0928  | -80.39    |        60       |
+| WY    | Jackson         | 43.035   | -106.8283 |       180       |
+
+
