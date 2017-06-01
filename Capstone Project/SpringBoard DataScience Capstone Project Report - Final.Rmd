@@ -18,8 +18,8 @@ header-includes:
 
 \pagebreak
 
-```{r setup, include=FALSE, message=FALSE}
-knitr::opts_chunk$set(echo = TRUE, tidy.opts=list(width.cutoff=80), tidy=TRUE)
+```{r setup, include=FALSE, message=FALSE, results='asis'}
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=50), tidy=TRUE)
 ```
 
 # INTRODUCTION
@@ -85,8 +85,9 @@ setup_twitter_oauth(api_key,api_secret,access_token,access_token_secret)
 
 # Extract tweets for each US state using searchTwitter function and write to a csv file. Few examples are shown here. A table with necessary details is provided below for all states. By replacing geocode and radius parameters for each city we can obtain tweets for all the locations included in the scope of this analysis.
 
-tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR 
-#Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='61.2876,-149.4869,400mi')
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban 
+          OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', 
+          n=100000, since='2017-01-27', until=NULL, lang="en", geocode='61.2876,-149.4869,400mi')
 
 df_tweets_AK_Alaska <- twListToDF(tweets)
 
@@ -113,13 +114,15 @@ df_tweets_AK_Alaska$State <- "AK"
 ```{r echo = TRUE, eval = FALSE}
 
 # Search for Alabama includes two cities
-tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR 
-#Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='33.4564,-86.8019,100mi')
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban 
+          OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', 
+          n=100000, since='2017-01-27', until=NULL, lang="en", geocode='33.4564,-86.8019,100mi')
 
 df_tweets_AL_Birmingham <- twListToDF(tweets)
 
-tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR 
-#Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='32.3569,-86.2578,100mi')
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban 
+          OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', 
+          n=100000, since='2017-01-27', until=NULL, lang="en", geocode='32.3569,-86.2578,100mi')
 
 df_tweets_AL_Mongomery <- twListToDF(tweets)
 
@@ -161,8 +164,9 @@ Above steps were repeated for all the remaining States in the U.S.
 
 ```{r echo = TRUE, eval = FALSE}
 
-tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR 
-#Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='34.2089,-91.9859,120mi')
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban 
+          OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', 
+          n=100000, since='2017-01-27', until=NULL, lang="en", geocode='34.2089,-91.9859,120mi')
 
 df_tweets_AR_Conway <- twListToDF(tweets)
 
@@ -170,8 +174,9 @@ df_tweets_AR_Conway$City <- "Conway"
 
 df_tweets_AR_Conway$State <- "AR"
 
-tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR 
-#Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='35.8358,-90.6230,20mi')
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber 
+          OR #BanIslam OR #Resist OR #IResist OR #TheResistance', 
+          n=100000, since='2017-01-27', until=NULL, lang="en", geocode='35.8358,-90.6230,20mi')
 
 df_tweets_AR_Jonesboro <- twListToDF(tweets)
 
@@ -189,8 +194,9 @@ retweetCount,isRetweet,retweeted,longitude,latitude,.keep_all = TRUE)
 
 ```{r echo = TRUE, eval = FALSE}
 
-tweets <- searchTwitter('travelban OR immigrationban OR muslimban OR #DeleteUber OR #BanIslam OR 
-#Resist OR #IResist OR #TheResistance', n=100000, since='2017-01-27', until=NULL, lang="en", geocode='33.7039,-112.1871,120mi')
+tweets <- searchTwitter('travelban OR immigrationban OR muslimban 
+          OR #DeleteUber OR #BanIslam OR #Resist OR #IResist OR #TheResistance', 
+          n=100000, since='2017-01-27', until=NULL, lang="en", geocode='33.7039,-112.1871,120mi')
 
 df_tweets_AZ_Phoenix <- twListToDF(tweets)
 
@@ -236,11 +242,6 @@ library(dplyr)
 
 tweets_data = read.csv(file="Tweets - Presidential actions 2017.csv",row.names=NULL,header=TRUE)
 
-# See structure of the data
-
-str(tweets_data)
-
-
 # Summarize number of tweets collected per State
 
 tweets_data %>% group_by(State) %>% summarise(tweet_count = n()) %>% ungroup() %>% arrange(State) %>% knitr::kable()
@@ -276,7 +277,7 @@ clean_tweet = gsub("^\\s+|\\s+$", "", clean_tweet)
 clean_tweet = gsub("\\\n", " ", clean_tweet) 
 clean_tweet <- str_replace_all(clean_tweet,"#[a-z,A-Z]*","")
 
-tweets_data$Clean_Tweet_With_Hashtag <- clean_tweet
+tweets_data$CleanTweet_Hashtag <- clean_tweet
 
 # Cleaning round 2 - by removing all words with hashtags
 
@@ -291,7 +292,7 @@ clean_tweet = gsub("[ \t]{2,}", "", clean_tweet)
 clean_tweet = gsub("^\\s+|\\s+$", "", clean_tweet) 
 clean_tweet = gsub("\\\n", " ", clean_tweet) 
 
-tweets_data$Clean_Tweet_Without_Hashtag <- clean_tweet
+tweets_data$CleanTweet_No_Hashtag <- clean_tweet
 ```
 
 
@@ -304,9 +305,11 @@ Few sentiment classification packages (sentimentr, doc2vec, syuzhet) were consid
 library(sentimentr)
 library(exploratory)
 
-tweets_data$Sentimentscore_withhashtag <- get_sentiment(tweets_data$Clean_Tweet_With_Hashtag)
+tweets_data$Score_hashtag <- 
+  get_sentiment(tweets_data$CleanTweet_Hashtag)
 
-tweets_data$Sentimentscore_withouthashtag <- get_sentiment(tweets_data$Clean_Tweet_Without_Hashtag)
+tweets_data$Score_Nohashtag <- 
+  get_sentiment(tweets_data$CleanTweet_No_Hashtag)
 
 ```
 
@@ -320,26 +323,42 @@ A correlation analysis was performed between the two sentiment scores. The resul
 ```{r echo = TRUE, cache=TRUE, warning=FALSE}
 library(ggplot2)
 
-tweets_data <- tweets_data %>% rename(Score_withhashtag=`Sentimentscore_withhashtag`, Score_withouthashtag=`Sentimentscore_withouthashtag`)
+#tweets_data <- tweets_data %>% rename(Score_withhashtag=`Sentimentscore_withhashtag`, Score_withouthashtag=`Sentimentscore_withouthashtag`)
 
 # correlation analysis on two scores
 
-tweets_data %>% select(Score_withhashtag, Score_withouthashtag) %>% cor()
+tweets_data %>% select(Score_hashtag, Score_Nohashtag) %>% cor()
 ```
 
 ```{r echo = TRUE, cache=TRUE, warning=FALSE}
-tweets_data %>% group_by(State) %>% summarise(Score_withhashtag = mean(Score_withhashtag), Score_withouthashtag = mean(Score_withouthashtag)) %>% ungroup() %>% arrange(State) %>% knitr::kable()
+tweets_data %>% 
+group_by(State) %>% 
+summarise(Score_hashtag = mean(Score_hashtag), 
+          Score_Nohashtag = mean(Score_Nohashtag)) %>% 
+ungroup() %>% 
+arrange(State) %>% 
+knitr::kable()
 ```
 
 ```{r echo = TRUE, cache=TRUE, fig.pos="H", fig.cap='Sentiment Score Distribution - State vs Score_withhashtag', warning=FALSE}
 library('magrittr')
 # State level score distribution analysis
-tweets_data %>% group_by(State) %>% summarise(Score_withhashtag = mean(Score_withhashtag)) %>% ggplot(aes(State, Score_withhashtag)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+tweets_data %>% 
+group_by(State) %>% 
+summarise(Score_hashtag = mean(Score_hashtag)) %>% 
+ggplot(aes(State, Score_hashtag)) + 
+geom_bar(stat='identity') + 
+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 
 ```{r echo = TRUE, cache=TRUE, fig.pos="H", fig.cap='Sentiment Score Distribution - State vs Score_withouthashtag', warning=FALSE}
-tweets_data %>% group_by(State) %>% summarise(Score_withouthashtag = mean(Score_withouthashtag)) %>% ggplot(aes(State, Score_withouthashtag)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+tweets_data %>% 
+group_by(State) %>% 
+summarise(Score_Nohashtag = mean(Score_Nohashtag))%>% 
+ggplot(aes(State, Score_Nohashtag)) + 
+geom_bar(stat='identity') + 
+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 \pagebreak
@@ -355,44 +374,54 @@ library(maps)
 # load map data for US States
 all_states <- map_data("state")
 
-# calculate state level sentiment score
-sentiment_score <- tweets_data %>% group_by(State) %>% summarize(Score_withouthashtag = mean(Score_withouthashtag))
+tweets_data <- tweets_data %>% rename(Score =`Score_Nohashtag`)
 
-tbl_df(sentiment_score)
+# calculate state level sentiment score
+Score_SL <- tweets_data %>% 
+         group_by(State) %>% 
+         summarize(Score = mean(Score))
+
+tbl_df(Score_SL)
 
 # get state names for each state code
-sentiment_score$State <- state.name[match(sentiment_score$State, state.abb)]
+Score_SL$State <- state.name[match(Score_SL$State, state.abb)]
 
 # State name was not retrieved for DC. So it needs to be added seperately
-sentiment_score$State[8] <- "District of Columbia"
+Score_SL$State[8] <- "District of Columbia"
 
 # view the dataframe
-tbl_df(sentiment_score) 
+tbl_df(Score_SL) 
 
 # map_data() does not return data for Alaska. Hence it needs to be removed from sentiment_score dataframe before it is merged with map_data() results
-sentiment_score <- sentiment_score[sentiment_score$State!="Alaska",]
+Score_SL <- Score_SL[Score_SL$State!="Alaska",]
 
 # Since Idaho was missed in the data extraction process it needs to be added to the dataset with a neutral score
-sentiment_score <- rbind(sentiment_score, c("Idaho", NA))
+Score_SL <- rbind(Score_SL, c("Idaho", NA))
 
-sentiment_score <- sentiment_score %>% mutate(Score_withouthashtag = as.numeric(Score_withouthashtag))
+Score_SL <- Score_SL %>% mutate(Score = as.numeric(Score))
 
-sentiment_score <- sentiment_score[ order(sentiment_score$State), ]
+Score_SL <- Score_SL[ order(Score_SL$State),]
 
-sentiment_score_map <- sentiment_score
+Score_map <- Score_SL
 
-sentiment_score_map <- sentiment_score_map %>% mutate(State = tolower(State))
+Score_map <- Score_map %>% mutate(State = tolower(State))
 
-sentiment_score_map$region <- sentiment_score_map$State
+Score_map$region <- Score_map$State
 
-sentiment_score_map <- merge(all_states, sentiment_score_map, by="region")
+Score_map <- merge(all_states, Score_map, by="region")
 ```
 
 ```{r echo = TRUE, warning=FALSE, cache=TRUE, fig.width=8, fig.height=4, fig.pos="H", fig.cap='US States Map with Sentiment Score level'}
 library(ggplot2)
 p <- ggplot() # plot the data
-p <- p + geom_polygon(data=sentiment_score_map, aes(x=long, y=lat, group = group, fill=sentiment_score_map$Score_withouthashtag),colour="white") + scale_fill_continuous(low = "thistle2", high = "darkred", guide="colorbar", trans = 'reverse')
-P1 <- p + theme_bw() + labs(fill = "Sentiment towards President Trump \n(Negative Score -> Resistance, \nPositive Score -> Support )", title = "2017 Presidential Actions - Sentiment Scores for US States (excluding Idaho)", x="", y="")
+p <- p + geom_polygon(data=Score_map, 
+                      aes(x=long, y=lat, group = group, fill=Score_map$Score),     
+                      colour="white") + 
+         scale_fill_continuous(low = "thistle2", high = "darkred", guide="colorbar", trans = 'reverse')
+P1 <- p + theme_bw() + 
+  labs(fill = "Sentiment towards President Trump 
+       \n(Negative Score -> Resistance, \nPositive Score -> Support )", 
+       title = "Sentiment Scores for US States (excluding Idaho)", x="", y="")
 P1 + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c()) + theme(panel.border = element_blank())
 ```
 
@@ -414,9 +443,9 @@ ElectionResults_data = readr::read_csv(file="2016 National Popular Vote Tracker.
 
 tbl_df(ElectionResults_data) %>% knitr::kable()
 
-ElectionResults_data[,9] <- as.numeric(sub("%","",ElectionResults_data[[9]], fixed = TRUE))
+ElectionResults_data[,6] <- as.numeric(sub("%","",ElectionResults_data[[6]], fixed = TRUE))
 
-RegressionAnalysis_data <- merge(sentiment_score, ElectionResults_data, by="State")
+RegressionAnalysis_data <- merge(Score_SL, ElectionResults_data, by="State")
 
 # Remove the outliers
 
@@ -424,11 +453,11 @@ RegressionAnalysis_data <- merge(sentiment_score, ElectionResults_data, by="Stat
 
 #DC VicotryMargin = -0.868
 
-RegressionAnalysis_data_final <- RegressionAnalysis_data %>% filter(!(State %in% c('Montana', 'District of Columbia')))
+Final_Data <- RegressionAnalysis_data %>% filter(!(State %in% c('Montana', 'District of Columbia')))
 
 # perform regression analysis
 
-Model <- lm(formula = Score_withouthashtag ~ VictoryMargin, data=RegressionAnalysis_data_final)
+Model <- lm(formula = Score ~ VictoryMargin, data=Final_Data)
 summary(Model)
 ```
 
@@ -437,8 +466,13 @@ summary(Model)
 ```{r echo = TRUE, cache=TRUE, warning=FALSE, fig.pos="H",fig.cap='Sentiment Score vs VictoryMargin - Regression Line'}
 library(ggplot2)
 library('magrittr')
-ggplot(RegressionAnalysis_data_final, aes(x = VictoryMargin, y = Score_withouthashtag )) + 
-  geom_point() + geom_point(data = RegressionAnalysis_data %>% filter(State == 'Montana'), colour="blue") + geom_point(data = RegressionAnalysis_data %>% filter(State == 'District of Columbia'), colour="blue") +
+ggplot(Final_Data, 
+       aes(x = VictoryMargin, y = Score)) + 
+  geom_point() + 
+  geom_point(data = RegressionAnalysis_data %>% 
+               filter(State == 'Montana'), colour="blue") + 
+  geom_point(data = RegressionAnalysis_data %>% 
+               filter(State == 'District of Columbia'), colour="blue") +
   stat_smooth(method = "lm", col = "red") # plot regression analysis results
 ```
 
